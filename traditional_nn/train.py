@@ -47,13 +47,12 @@ net = Net()
 weights_len = len(list(net.parameters()))
 def feed_forward(weights):
     global net
-    for param, weight in zip(net.parameters(), weight): # update parameters
-        param = weight
-    input = torch.tensor(x)
+    for param, weight in zip(net.parameters(), weights): # update parameters
+        param = torch.tensor(weight).to(dtype=torch.float32)
+    input = torch.tensor(x).to(dtype=torch.float32)
     output = net(input)
-    target = F.one_hot(torch.tensor(y), num_classes=3)  # a dummy target, for example
+    target = F.one_hot(torch.tensor(y), num_classes=3).to(dtype=torch.float32)  # a dummy target, for example
     loss = nn.CrossEntropyLoss()(output, target)
-    print(loss)
     return loss
 
 initial_weights = [1 for i in range(weights_len)]
