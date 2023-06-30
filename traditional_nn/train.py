@@ -33,11 +33,11 @@ class Net(nn.Module):
 
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(4, 3)
-        self.fc2 = nn.Linear(3, 3)
+        self.fc1 = nn.Linear(4, 10)
+        self.fc2 = nn.Linear(10, 3)
 
     def forward(self, x):
-        x = F.sigmoid(self.fc1(x))
+        x = F.relu(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -79,7 +79,7 @@ for name, param in net.named_parameters(): # get number of weights
         for i in range(param.data.shape[0]):
             for j in range(param.data.shape[1]):
                 weights_len += 1
-initial_weights = [0.5 for i in range(weights_len)]
+initial_weights = [0 for i in range(weights_len)]
 
 def test(x):
     #print(x)
