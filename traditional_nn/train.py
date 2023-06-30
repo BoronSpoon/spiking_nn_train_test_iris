@@ -37,7 +37,7 @@ class Net(nn.Module):
         self.fc2 = nn.Linear(3, 3)
 
     def forward(self, x):
-        x = F.relu(self.fc1(x))
+        x = F.sigmoid(self.fc1(x))
         x = self.fc2(x)
         return x
 
@@ -48,25 +48,29 @@ input = torch.tensor(x).to(dtype=torch.float32)
 target = torch.tensor(y).to(dtype=torch.float32)
 
 losses = []
+accuracies = []
 
 def feed_forward(weights):
-    global net, losses
+    global net, losses, accuracies
     weight_count = 0
-    for name, param in net.named_parameters(): # update parameters
-        if weight_count == 0: print(param)
-        if "weight" in name:
-            for i in range(param.data.shape[0]):
-                for j in range(param.data.shape[1]):
-                    param.data[i,j] = weights[weight_count]
-                    weight_count += 1
-        elif "bias" in name:
-            param.data *= 0
+    with torch.no_grad():
+        for name, param in net.named_parameters(): # update parameters
+            if weight_count == 0: print(param)
+            if "weight" in name:
+                for i in range(param.data.shape[0]):
+                    for j in range(param.data.shape[1]):
+                        param.data[i,j] = weights[weight_count]
+                        weight_count += 1
+            elif "bias" in name:
+                param.data *= 0
         # param.data = torch.tensor(weight).to(dtype=torch.float32)
     #print(list(net.parameters()))
     output = net(input)
     _, output_labels = output.max(dim=1)
     loss = nn.CrossEntropyLoss()(output_labels.to(dtype=torch.float32), target)
+    accuracy = sum(output_labels==target)/(len(output_labels))
     losses.append(float(loss))
+    accuracies.append(float(accuracy))
     return loss
 
 weights_len = 0
@@ -84,8 +88,8 @@ def test(x):
     return loss
 
 res = minimize(
-    #feed_forward, 
-    test, 
+    feed_forward, 
+    #test, 
     initial_weights,
     method='Nelder-Mead', 
     bounds=[(0,1) for i in range(weights_len)],
@@ -93,4 +97,7 @@ res = minimize(
 
 plt.plot(losses)
 plt.savefig("loss.png")
+plt.clf()
+plt.plot(accuracies)
+plt.savefig("acc.png")
 plt.show()
