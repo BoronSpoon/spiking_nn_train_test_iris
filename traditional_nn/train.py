@@ -10,8 +10,8 @@ torch.manual_seed(0)
 iris = load_iris()
 x = iris['data']
 y = iris['target']
-print(x)
-print(y)
+#print(x)
+#print(y)
 
 plot_params = {
     "axes.labelsize": 16,
@@ -35,30 +35,53 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.fc1 = nn.Linear(4, 3)
         self.fc2 = nn.Linear(3, 3)
-        self.fc3 = nn.Linear(3, 4)
 
     def forward(self, x):
         x = F.relu(self.fc1(x))
-        x = F.relu(self.fc2(x))
-        x = self.fc3(x)
+        x = self.fc2(x)
         return x
 
 net = Net()
 weights_len = len(list(net.parameters()))
+input = torch.tensor(x).to(dtype=torch.float32)
+# target = F.one_hot(torch.tensor(y).to(dtype=torch.int64), num_classes=3) # cross entropy cannot use one hot
+target = torch.tensor(y).to(dtype=torch.float32)
+
+losses = []
+
 def feed_forward(weights):
-    global net
-    for param, weight in zip(net.parameters(), weights): # update parameters
-        param = torch.tensor(weight).to(dtype=torch.float32)
-    input = torch.tensor(x).to(dtype=torch.float32)
+    global net, losses
+    weight_count = 0
+    for name, param in net.named_parameters(): # update parameters
+        if "weight" in name:
+            for i in range(param.data.shape[0]):
+                for j in range(param.data.shape[1]):
+                    param.data[i,j] = weights[weight_count]
+                    weight_count += 1
+        elif "bias" in name:
+            param.data *= 0
+        # param.data = torch.tensor(weight).to(dtype=torch.float32)
+    #print(list(net.parameters()))
     output = net(input)
-    target = F.one_hot(torch.tensor(y), num_classes=3).to(dtype=torch.float32)  # a dummy target, for example
-    loss = nn.CrossEntropyLoss()(output, target)
+    _, output_labels = output.max(dim=1)
+    loss = nn.CrossEntropyLoss()(output_labels.to(dtype=torch.float32), target)
+    losses.append(float(loss))
     return loss
 
+weights_len = 0
+for name, param in net.named_parameters(): # get number of weights
+    if "weight" in name:
+        for i in range(param.data.shape[0]):
+            for j in range(param.data.shape[1]):
+                weights_len += 1
 initial_weights = [1 for i in range(weights_len)]
 res = minimize(
     feed_forward, 
     initial_weights,
-    method='BFGS', 
+    method='L-BFGS-B', 
     bounds=[(0,1) for i in range(weights_len)],
 )
+
+plt.plot(losses)
+plt.savefig("loss.png")
+plt.show()
