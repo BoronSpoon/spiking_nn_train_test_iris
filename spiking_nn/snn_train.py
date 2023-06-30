@@ -9,8 +9,16 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 torch.manual_seed(0)
+from scipy.optimize import minimize
+from sklearn.datasets import load_iris
 
 num_steps = 200
+
+iris = load_iris()
+x = iris['data']
+y = iris['target']
+#print(x)
+#print(y)
 
 #@title Plotting Settings
 def plot_cur_mem_spk(cur, mem, spk, thr_line=False, vline=False, title=False, ylim_max1=1.25, ylim_max2=1.25):
@@ -60,34 +68,9 @@ def plot_snn_spikes(spk_in, spk1_rec, spk2_rec, title):
     # Plot output spikes
     splt.raster(spk2_rec.reshape(num_steps, -1), ax[2], c="black", marker="|")
     ax[2].set_ylabel("Output Spikes")
-    ax[2].set_ylim([0, 10])
+    ax[2].set_ylim([-0.2, 2.2])
 
     plt.show()
-"""
-lif1 = snn.Leaky(beta=1)
-
-# Small step current input
-w=0.21
-cur_in = torch.cat((torch.zeros(10), torch.ones(190)*w), 0)
-mem = torch.zeros(1)
-spk = torch.zeros(1)
-mem_rec = []
-spk_rec = []
-
-# neuron simulation
-for step in range(num_steps):
-  spk, mem = lif1(cur_in[step], mem)
-  mem_rec.append(mem)
-  spk_rec.append(spk)
-
-# convert lists to tensors
-mem_rec = torch.stack(mem_rec)
-spk_rec = torch.stack(spk_rec)
-
-plot_cur_mem_spk(cur_in, mem_rec, spk_rec, thr_line=1, ylim_max1=0.5,
-                 title="snn.Leaky Neuron Model")
-
-"""
 
 # layer parameters
 num_inputs = 4
@@ -100,47 +83,95 @@ fc1 = nn.Linear(num_inputs, num_hidden)
 lif1 = snn.Leaky(beta=beta)
 fc2 = nn.Linear(num_hidden, num_outputs)
 lif2 = snn.Leaky(beta=beta)
+for layer in [fc1, lif1, fc2, lif2]:
+    for param in layer.parameters():
+        param.requires_grad = False
+weights_len = num_inputs*num_hidden + num_hidden*num_outputs
 
 # Initialize hidden states
 mem1 = lif1.init_leaky()
 mem2 = lif2.init_leaky()
 
-# record outputs
-mem2_rec = []
-spk1_rec = []
-spk2_rec = []
+target = torch.tensor(y).to(dtype=torch.int64)
 
-spk_in = spikegen.rate_conv(torch.rand((150, 4))).unsqueeze(1)
-print(f"Dimensions of spk_in: {spk_in.size()}")
+losses = []
+accuracies = []
 
-# network simulation
-for step in range(num_steps):
-    cur1 = fc1(spk_in[step]) # post-synaptic current <-- spk_in x weight
-    spk1, mem1 = lif1(cur1, mem1) # mem[t+1] <--post-syn current + decayed membrane
-    cur2 = fc2(spk1)
-    spk2, mem2 = lif2(cur2, mem2)
+def feed_forward(weights):
+    global losses, accuracies, mem1, mem2
+    # update weights    
+    weight_count = 0
+    with torch.no_grad():
+        for layer in [fc1, fc2]:
+            for name, param in layer.named_parameters(): # update parameters
+                #if weight_count == 0: print(param)
+                if "weight" in name:
+                    for i in range(param.data.shape[0]):
+                        for j in range(param.data.shape[1]):
+                            param.data[i,j] = weights[weight_count]
+                            weight_count += 1
 
-    mem2_rec.append(mem2)
-    spk1_rec.append(spk1)
-    spk2_rec.append(spk2)
+    # feed forward through batches
+    outputs = []
+    for batch_count in range(150):
+        #if batch_count%10 == 0: print(batch_count)
+        spk_in = spikegen.rate_conv(torch.tensor([x[batch_count] for i in range(num_steps)], dtype=torch.float32)).unsqueeze(1)
+        #print(f"{spk_in.shape}")
+        #print(f"Dimensions of spk_in: {spk_in.size()}")
 
-# convert lists to tensors
-mem2_rec = torch.stack(mem2_rec)
-spk1_rec = torch.stack(spk1_rec)
-spk2_rec = torch.stack(spk2_rec)
+        # record outputs
+        mem2_rec = []
+        spk1_rec = []
+        spk2_rec = []
 
-plot_snn_spikes(spk_in, spk1_rec, spk2_rec, "Fully Connected Spiking Neural Network")
+        # network simulation
+        for step in range(num_steps):
+            cur1 = fc1(spk_in[step]) # post-synaptic current <-- spk_in x weight
+            spk1, mem1 = lif1(cur1, mem1) # mem[t+1] <--post-syn current + decayed membrane
+            cur2 = fc2(spk1)
+            spk2, mem2 = lif2(cur2, mem2)
 
-fig, ax = plt.subplots(facecolor='w', figsize=(12, 7))
-labels=['0', '1', '2']
-spk2_rec = spk2_rec.squeeze(1).detach().cpu()
+            mem2_rec.append(mem2)
+            spk1_rec.append(spk1)
+            spk2_rec.append(spk2)
 
-# plt.rcParams['animation.ffmpeg_path'] = 'C:\\path\\to\\your\\ffmpeg.exe'
+        # convert lists to tensors
+        mem2_rec = torch.stack(mem2_rec)
+        spk1_rec = torch.stack(spk1_rec)
+        spk2_rec = torch.stack(spk2_rec)
 
-#  Plot spike count histogram
-anim = splt.spike_count(spk2_rec, fig, ax, labels=labels, animate=True)
+        output = spk2_rec.detach().numpy().sum(axis=0)[0]/170
+        outputs.append(output)
+    
+    outputs = torch.tensor(outputs, dtype=torch.float32)
+    output_labels = outputs.argmax(dim=1)
+    ####################################### shape is important here ##########################################
+    # output (float32) must be [batch_size, num_classes] (NEVER use argmax -> gradient cannot be calculated)
+    # target (int64) must be [batch_size, 1] (dont use one hot)
+    ##########################################################################################################
+    loss = nn.CrossEntropyLoss()(outputs, target)
+    loss = loss.detach().numpy()
+    accuracy = sum(output_labels==target)/(len(output_labels))
+    print(loss, accuracy)
+    losses.append(float(loss))
+    accuracies.append(float(accuracy))
+    # print(np.max(outputs)) # 168
+    return loss
 
-# plot membrane potential traces
-splt.traces(mem2_rec.squeeze(1), spk=spk2_rec.squeeze(1))
-fig = plt.gcf() 
-fig.set_size_inches(8, 6)
+initial_weights = [0 for i in range(weights_len)]
+    
+res = minimize(
+    feed_forward, 
+    #test, 
+    initial_weights,
+    method='Nelder-Mead', 
+    bounds=[(0,10) for i in range(weights_len)],
+    options={"maxiter": 100},
+)
+
+plt.plot(losses)
+plt.savefig("snn_loss.png")
+plt.clf()
+plt.plot(accuracies)
+plt.savefig("snn_acc.png")
+plt.show()

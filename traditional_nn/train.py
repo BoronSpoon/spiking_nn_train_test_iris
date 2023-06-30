@@ -86,6 +86,7 @@ for name, param in net.named_parameters(): # get number of weights
             for j in range(param.data.shape[1]):
                 weights_len += 1
 initial_weights = [0.5 for i in range(weights_len)]
+print(weights_len)
 
 def test(x):
     #print(x)
