@@ -67,6 +67,10 @@ def feed_forward(weights):
     #print(list(net.parameters()))
     output = net(input)
     output_labels = output.argmax(dim=1)
+    ####################################### shape is important here ##########################################
+    # output (float32) must be [batch_size, num_classes] (NEVER use argmax -> gradient cannot be calculated)
+    # target (int64) must be [batch_size, 1] (dont use one hot)
+    ##########################################################################################################
     loss = nn.CrossEntropyLoss()(output, target)
     loss = loss.detach().numpy()
     accuracy = sum(output_labels==target)/(len(output_labels))
