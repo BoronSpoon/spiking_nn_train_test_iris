@@ -53,6 +53,7 @@ def feed_forward(weights):
     global net, losses
     weight_count = 0
     for name, param in net.named_parameters(): # update parameters
+        if weight_count == 0: print(param)
         if "weight" in name:
             for i in range(param.data.shape[0]):
                 for j in range(param.data.shape[1]):
@@ -74,11 +75,19 @@ for name, param in net.named_parameters(): # get number of weights
         for i in range(param.data.shape[0]):
             for j in range(param.data.shape[1]):
                 weights_len += 1
-initial_weights = [1 for i in range(weights_len)]
+initial_weights = [0.5 for i in range(weights_len)]
+
+def test(x):
+    #print(x)
+    loss = sum(x**2)
+    losses.append(loss)
+    return loss
+
 res = minimize(
-    feed_forward, 
+    #feed_forward, 
+    test, 
     initial_weights,
-    method='L-BFGS-B', 
+    method='Nelder-Mead', 
     bounds=[(0,1) for i in range(weights_len)],
 )
 
