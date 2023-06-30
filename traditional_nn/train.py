@@ -45,7 +45,7 @@ net = Net()
 weights_len = len(list(net.parameters()))
 input = torch.tensor(x).to(dtype=torch.float32)
 # target = F.one_hot(torch.tensor(y).to(dtype=torch.int64), num_classes=3) # cross entropy cannot use one hot
-target = torch.tensor(y).to(dtype=torch.float32)
+target = torch.tensor(y).to(dtype=torch.int64)
 
 losses = []
 accuracies = []
@@ -55,7 +55,7 @@ def feed_forward(weights):
     weight_count = 0
     with torch.no_grad():
         for name, param in net.named_parameters(): # update parameters
-            if weight_count == 0: print(param)
+            #if weight_count == 0: print(param)
             if "weight" in name:
                 for i in range(param.data.shape[0]):
                     for j in range(param.data.shape[1]):
@@ -66,8 +66,9 @@ def feed_forward(weights):
         # param.data = torch.tensor(weight).to(dtype=torch.float32)
     #print(list(net.parameters()))
     output = net(input)
-    _, output_labels = output.max(dim=1)
-    loss = nn.CrossEntropyLoss()(output_labels.to(dtype=torch.float32), target)
+    output_labels = output.argmax(dim=1)
+    loss = nn.CrossEntropyLoss()(output, target)
+    loss = loss.detach().numpy()
     accuracy = sum(output_labels==target)/(len(output_labels))
     losses.append(float(loss))
     accuracies.append(float(accuracy))
@@ -75,11 +76,12 @@ def feed_forward(weights):
 
 weights_len = 0
 for name, param in net.named_parameters(): # get number of weights
+    param.requires_grad = False
     if "weight" in name:
         for i in range(param.data.shape[0]):
             for j in range(param.data.shape[1]):
                 weights_len += 1
-initial_weights = [0 for i in range(weights_len)]
+initial_weights = [0.5 for i in range(weights_len)]
 
 def test(x):
     #print(x)
@@ -93,6 +95,7 @@ res = minimize(
     initial_weights,
     method='Nelder-Mead', 
     bounds=[(0,1) for i in range(weights_len)],
+    options={"maxiter": 20000},
 )
 
 plt.plot(losses)
