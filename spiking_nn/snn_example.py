@@ -52,10 +52,18 @@ def plot_cur_mem_spk(cur, mem, spk, thr_line=False, vline=False, title=False, yl
 
     plt.show()
 
-lif1 = snn.Leaky(beta=1)
+lif1 = snn.Leaky(beta=1, reset_mechanism = "zero")
 
 # Current spike input
-cur_in4 = torch.cat((torch.zeros(10), torch.ones(1)*0.4, torch.zeros(10), torch.ones(1)*0.4, torch.zeros(10), torch.ones(1)*0.4, torch.zeros(189)), 0)  # input only on for 1 time step
+cur_in4 = torch.cat((
+    torch.zeros(10), torch.ones(1)*0.4, 
+    torch.zeros(10), torch.ones(1)*0.4, 
+    torch.zeros(10), torch.ones(1)*0.4, 
+    torch.zeros(10), torch.ones(1)*0.4, 
+    torch.zeros(10), torch.ones(1)*0.4, 
+    torch.zeros(10), torch.ones(1)*0.4, 
+    torch.zeros(189)), 0
+)  # input only on for 1 time step
 mem = torch.zeros(1)
 spk_out = torch.zeros(1)
 mem_rec = [mem]

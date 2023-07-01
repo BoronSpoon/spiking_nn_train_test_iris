@@ -9,7 +9,7 @@ import torch.nn as nn
 import numpy as np
 import matplotlib.pyplot as plt
 torch.manual_seed(0)
-from scipy.optimize import minimize
+import pygad
 from sklearn.datasets import load_iris
 
 num_steps = 200
@@ -100,7 +100,7 @@ accuracies = []
 
 spk_ins = [spikegen.rate_conv(torch.tensor([x[batch_count] for i in range(num_steps)], dtype=torch.float32)).unsqueeze(1) for batch_count in range(150)]
 
-def feed_forward(weights):
+def feed_forward(ga_instance, weights, solution_idx):
     global losses, accuracies, mem1, mem2
     # update weights    
     weight_count = 0
@@ -162,7 +162,7 @@ def feed_forward(weights):
     losses.append(float(loss))
     accuracies.append(float(accuracy))
     # print(np.max(outputs)) # 168
-    return loss
+    return 1-loss
 
 #initial_weights = [0.05 for i in range(weights_len)]
 
@@ -184,14 +184,42 @@ initial_weights = [
     0.09027667, 0.3654198 , 0.93497746, 0.04179224, 0.21050083
 ]
     
-res = minimize(
-    feed_forward, 
-    #test, 
-    initial_weights,
-    method='Nelder-Mead', 
-    bounds=[(0,1) for i in range(weights_len)],
-    options={"maxiter": 100},
+fitness_function = feed_forward
+
+num_generations = 50
+num_parents_mating = 4
+
+sol_per_pop = 8
+num_genes = len(initial_weights)
+
+init_range_low = 0
+init_range_high = 1
+
+parent_selection_type = "sss"
+keep_parents = 1
+
+crossover_type = "single_point"
+
+mutation_type = "random"
+mutation_percent_genes = 70
+
+ga_instance = pygad.GA(
+    num_generations=num_generations,
+    num_parents_mating=num_parents_mating,
+    fitness_func=fitness_function,
+    sol_per_pop=sol_per_pop,
+    num_genes=num_genes,
+    init_range_low=init_range_low,
+    init_range_high=init_range_high,
+    parent_selection_type=parent_selection_type,
+    keep_parents=keep_parents,
+    crossover_type=crossover_type,
+    mutation_type=mutation_type,
+    mutation_percent_genes=mutation_percent_genes,
+    gene_space=[range(0, 1) for i in range(len(initial_weights))],
 )
+
+ga_instance.run()
 
 plt.plot(losses)
 plt.savefig("snn_loss.png")
