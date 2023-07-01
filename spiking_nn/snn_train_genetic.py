@@ -49,7 +49,7 @@ accuracies = []
 spk_ins = [spikegen.rate_conv(torch.tensor([x[batch_count] for i in range(num_steps)], dtype=torch.float32)).unsqueeze(1) for batch_count in range(150)]
 
 def feed_forward(ga_instance, weights, solution_idx):
-    print(weights[:20])
+    #print(weights[:20])
     global losses, accuracies, mem1, mem2
     # update weights    
     weight_count = 0
@@ -145,7 +145,7 @@ ga_instance = pygad.GA(
     crossover_type=crossover_type,
     mutation_type=mutation_type,
     mutation_percent_genes=mutation_percent_genes,
-    gene_space=[range(0, 1) for i in range(weights_len)],
+    gene_space=[{"low":0, "high":1, "step":0.1} for i in range(weights_len)],
     random_seed=0,
 )
 
