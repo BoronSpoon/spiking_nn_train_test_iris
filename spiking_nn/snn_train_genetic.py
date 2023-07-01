@@ -131,7 +131,7 @@ keep_parents = 1
 crossover_type = "single_point"
 
 mutation_type = "random"
-mutation_percent_genes = 70
+mutation_percent_genes = 20
 
 ga_instance = pygad.GA(
     num_generations=num_generations,
