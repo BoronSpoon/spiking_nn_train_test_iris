@@ -50,6 +50,7 @@ spk_ins = [spikegen.rate_conv(torch.tensor([x[batch_count] for i in range(num_st
 
 def feed_forward(ga_instance, weights, solution_idx):
     #print(weights[:20])
+    print(solution_idx, end=": ")
     global losses, accuracies, mem1, mem2
     # update weights    
     weight_count = 0
@@ -118,7 +119,7 @@ fitness_function = feed_forward
 num_generations = 50
 num_parents_mating = 4
 
-sol_per_pop = 4
+sol_per_pop = 8
 num_genes = weights_len
 
 init_range_low = 0.4
