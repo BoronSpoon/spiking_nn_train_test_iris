@@ -16,6 +16,7 @@ num_steps = 200
 
 iris = load_iris()
 x = iris['data']
+x = x/np.max(x)
 y = iris['target']
 #print(x)
 #print(y)
@@ -97,6 +98,8 @@ target = torch.tensor(y).to(dtype=torch.int64)
 losses = []
 accuracies = []
 
+spk_ins = [spikegen.rate_conv(torch.tensor([x[batch_count] for i in range(num_steps)], dtype=torch.float32)).unsqueeze(1) for batch_count in range(150)]
+
 def feed_forward(weights):
     global losses, accuracies, mem1, mem2
     # update weights    
@@ -110,12 +113,14 @@ def feed_forward(weights):
                         for j in range(param.data.shape[1]):
                             param.data[i,j] = weights[weight_count]
                             weight_count += 1
+                if "bias" in name:
+                    param.data *= 0
 
     # feed forward through batches
     outputs = []
     for batch_count in range(150):
         #if batch_count%10 == 0: print(batch_count)
-        spk_in = spikegen.rate_conv(torch.tensor([x[batch_count] for i in range(num_steps)], dtype=torch.float32)).unsqueeze(1)
+        spk_in = spk_ins[batch_count]
         #print(f"{spk_in.shape}")
         #print(f"Dimensions of spk_in: {spk_in.size()}")
 
@@ -140,7 +145,7 @@ def feed_forward(weights):
         spk1_rec = torch.stack(spk1_rec)
         spk2_rec = torch.stack(spk2_rec)
 
-        output = spk2_rec.detach().numpy().sum(axis=0)[0]/170
+        output = spk2_rec.detach().numpy().sum(axis=0)[0]/200
         outputs.append(output)
     
     outputs = torch.tensor(outputs, dtype=torch.float32)
@@ -152,20 +157,39 @@ def feed_forward(weights):
     loss = nn.CrossEntropyLoss()(outputs, target)
     loss = loss.detach().numpy()
     accuracy = sum(output_labels==target)/(len(output_labels))
+    print(outputs[:5, :3])
     print(loss, accuracy)
     losses.append(float(loss))
     accuracies.append(float(accuracy))
     # print(np.max(outputs)) # 168
     return loss
 
-initial_weights = [0 for i in range(weights_len)]
+#initial_weights = [0.05 for i in range(weights_len)]
+
+# training result of normal nn
+initial_weights = [
+    0.84783617, 0.44503967, 0.56239707, 1.        , 0.42604591,
+    0.01138287, 0.96939782, 0.97666726, 0.00675524, 0.        ,
+    0.88647085, 0.20231477, 0.00146853, 0.1888283 , 0.25861927,
+    0.99776879, 0.1054487 , 0.        , 0.49059965, 0.98568222,
+    0.99958481, 0.05757991, 0.02662554, 0.0178756 , 0.4848848 ,
+    0.44408592, 0.10377315, 0.24340086, 0.04875144, 0.06642141,
+    0.14724149, 0.96571841, 0.1582396 , 0.98016019, 0.01885701,
+    1.        , 0.95399136, 0.        , 0.48079907, 0.93373499,
+    0.3635811 , 0.00378183, 0.05886937, 0.38260926, 0.38000544,
+    0.52873809, 0.99886486, 0.26816627, 1.        , 0.38996802,
+    0.32179991, 0.21380326, 0.70354077, 0.96757686, 0.04089591,
+    0.        , 0.95487914, 0.58227088, 0.04460894, 0.99787025,
+    0.00853126, 0.98697567, 0.99118411, 0.98481932, 0.99247238,
+    0.09027667, 0.3654198 , 0.93497746, 0.04179224, 0.21050083
+]
     
 res = minimize(
     feed_forward, 
     #test, 
     initial_weights,
     method='Nelder-Mead', 
-    bounds=[(0,10) for i in range(weights_len)],
+    bounds=[(0,0.1) for i in range(weights_len)],
     options={"maxiter": 100},
 )
 
