@@ -21,58 +21,6 @@ y = iris['target']
 #print(x)
 #print(y)
 
-#@title Plotting Settings
-def plot_cur_mem_spk(cur, mem, spk, thr_line=False, vline=False, title=False, ylim_max1=1.25, ylim_max2=1.25):
-    # Generate Plots
-    fig, ax = plt.subplots(3, figsize=(8,6), sharex=True, 
-                            gridspec_kw = {'height_ratios': [1, 1, 0.4]})
-
-    # Plot input current
-    ax[0].plot(cur, c="tab:orange")
-    ax[0].set_ylim([0, ylim_max1])
-    ax[0].set_xlim([0, 200])
-    ax[0].set_ylabel("Input Current ($I_{in}$)")
-    if title:
-        ax[0].set_title(title)
-
-    # Plot membrane potential
-    ax[1].plot(mem)
-    ax[1].set_ylim([0, ylim_max2]) 
-    ax[1].set_ylabel("Membrane Potential ($U_{mem}$)")
-    if thr_line:
-        ax[1].axhline(y=thr_line, alpha=0.25, linestyle="dashed", c="black", linewidth=2)
-    plt.xlabel("Time step")
-
-    # Plot output spike using spikeplot
-    splt.raster(spk, ax[2], s=400, c="black", marker="|")
-    if vline:
-        ax[2].axvline(x=vline, ymin=0, ymax=6.75, alpha = 0.15, linestyle="dashed", c="black", linewidth=2, zorder=0, clip_on=False)
-    plt.ylabel("Output spikes")
-    plt.yticks([]) 
-
-    plt.show()
-
-def plot_snn_spikes(spk_in, spk1_rec, spk2_rec, title):
-    # Generate Plots
-    fig, ax = plt.subplots(3, figsize=(8,7), sharex=True, 
-                            gridspec_kw = {'height_ratios': [1, 1, 0.4]})
-
-    # Plot input spikes
-    splt.raster(spk_in[:,0], ax[0], s=0.03, c="black")
-    ax[0].set_ylabel("Input Spikes")
-    ax[0].set_title(title)
-
-    # Plot hidden layer spikes
-    splt.raster(spk1_rec.reshape(num_steps, -1), ax[1], s = 0.05, c="black")
-    ax[1].set_ylabel("Hidden Layer")
-
-    # Plot output spikes
-    splt.raster(spk2_rec.reshape(num_steps, -1), ax[2], c="black", marker="|")
-    ax[2].set_ylabel("Output Spikes")
-    ax[2].set_ylim([-0.2, 2.2])
-
-    plt.show()
-
 # layer parameters
 num_inputs = 4
 num_hidden = 10
@@ -165,32 +113,12 @@ def feed_forward(ga_instance, weights, solution_idx):
     # print(np.max(outputs)) # 168
     return 1/loss
 
-#initial_weights = [0.05 for i in range(weights_len)]
-
-# training result of normal nn
-initial_weights = [
-    0.84783617, 0.44503967, 0.56239707, 1.        , 0.42604591,
-    0.01138287, 0.96939782, 0.97666726, 0.00675524, 0.        ,
-    0.88647085, 0.20231477, 0.00146853, 0.1888283 , 0.25861927,
-    0.99776879, 0.1054487 , 0.        , 0.49059965, 0.98568222,
-    0.99958481, 0.05757991, 0.02662554, 0.0178756 , 0.4848848 ,
-    0.44408592, 0.10377315, 0.24340086, 0.04875144, 0.06642141,
-    0.14724149, 0.96571841, 0.1582396 , 0.98016019, 0.01885701,
-    1.        , 0.95399136, 0.        , 0.48079907, 0.93373499,
-    0.3635811 , 0.00378183, 0.05886937, 0.38260926, 0.38000544,
-    0.52873809, 0.99886486, 0.26816627, 1.        , 0.38996802,
-    0.32179991, 0.21380326, 0.70354077, 0.96757686, 0.04089591,
-    0.        , 0.95487914, 0.58227088, 0.04460894, 0.99787025,
-    0.00853126, 0.98697567, 0.99118411, 0.98481932, 0.99247238,
-    0.09027667, 0.3654198 , 0.93497746, 0.04179224, 0.21050083
-]
-    
 fitness_function = feed_forward
 
 num_generations = 50
 num_parents_mating = 4
 
-sol_per_pop = 8
+sol_per_pop = 4
 num_genes = weights_len
 
 init_range_low = 0.4
@@ -217,7 +145,7 @@ ga_instance = pygad.GA(
     crossover_type=crossover_type,
     mutation_type=mutation_type,
     mutation_percent_genes=mutation_percent_genes,
-    gene_space=[range(0, 1) for i in range(len(initial_weights))],
+    gene_space=[range(0, 1) for i in range(weights_len)],
     random_seed=0,
 )
 
