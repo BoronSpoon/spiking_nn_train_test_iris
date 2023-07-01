@@ -101,6 +101,7 @@ accuracies = []
 spk_ins = [spikegen.rate_conv(torch.tensor([x[batch_count] for i in range(num_steps)], dtype=torch.float32)).unsqueeze(1) for batch_count in range(150)]
 
 def feed_forward(ga_instance, weights, solution_idx):
+    print(weights[:20])
     global losses, accuracies, mem1, mem2
     # update weights    
     weight_count = 0
@@ -157,12 +158,12 @@ def feed_forward(ga_instance, weights, solution_idx):
     loss = nn.CrossEntropyLoss()(outputs, target)
     loss = loss.detach().numpy()
     accuracy = sum(output_labels==target)/(len(output_labels))
-    print(outputs[:5, :3])
+    #print(outputs[:5, :3])
     print(f"loss={loss:.3f}, accuracy={accuracy:.3f}")
     losses.append(float(loss))
     accuracies.append(float(accuracy))
     # print(np.max(outputs)) # 168
-    return 1-loss
+    return 1/loss
 
 #initial_weights = [0.05 for i in range(weights_len)]
 
@@ -190,10 +191,10 @@ num_generations = 50
 num_parents_mating = 4
 
 sol_per_pop = 8
-num_genes = len(initial_weights)
+num_genes = weights_len
 
-init_range_low = 0
-init_range_high = 1
+init_range_low = 0.4
+init_range_high = 0.6
 
 parent_selection_type = "sss"
 keep_parents = 1
@@ -217,6 +218,7 @@ ga_instance = pygad.GA(
     mutation_type=mutation_type,
     mutation_percent_genes=mutation_percent_genes,
     gene_space=[range(0, 1) for i in range(len(initial_weights))],
+    random_seed=0,
 )
 
 ga_instance.run()
